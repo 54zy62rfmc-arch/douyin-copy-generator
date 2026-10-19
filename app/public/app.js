@@ -1663,6 +1663,43 @@ function bindTabs() {
   $$('.tab').forEach((tab) => tab.addEventListener('click', () => goTab(tab.dataset.view)));
 }
 
+/* ========== SW 更新提示 ========== */
+let swReloading = false;
+function setupSwUpdate() {
+  navigator.serviceWorker
+    .register('/sw.js')
+    .then((reg) => {
+      // 已有等待中的新 SW（上次更新后未刷新）直接提示
+      if (reg.waiting && navigator.serviceWorker.controller) showUpdateBar(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBar(nw);
+        });
+      });
+      reg.update().catch(() => {});
+    })
+    .catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!swReloading) return; // 仅本页面点击刷新后才跟随重载
+    location.reload();
+  });
+}
+
+function showUpdateBar(worker) {
+  const bar = $('#updateBar');
+  if (!bar || !bar.classList.contains('hidden')) return;
+  bar.classList.remove('hidden');
+  bar.addEventListener('click', () => {
+    bar.textContent = '正在更新…';
+    swReloading = true;
+    worker.postMessage({ type: 'SKIP_WAITING' });
+    // 兜底：若新 SW 已是激活态（不会触发 controllerchange），1.5s 后直接刷新
+    setTimeout(() => location.reload(), 1500);
+  });
+}
+
 function init() {
   state.cloudSync = Boolean(load(LS.cloudsync, false));
   $('#cloudSync').checked = state.cloudSync;
@@ -1866,9 +1903,7 @@ function init() {
   syncMetricsToCloud().then(() => renderHistory());
   refreshModeBadge();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  }
+  if ('serviceWorker' in navigator) setupSwUpdate();
 }
 
 document.addEventListener('DOMContentLoaded', init);

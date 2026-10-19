@@ -81,6 +81,20 @@ body {
 }
 .mode-badge.live { color: #0a0a0d; background: linear-gradient(135deg, var(--cyan), #7ef7f2); border-color: transparent; font-weight: 700; }
 
+/* 新版本提示条 */
+.update-bar {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--cyan);
+  background: var(--card-2);
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  user-select: none;
+}
+.update-bar:active { opacity: 0.8; }
+
 /* ============ 滚动区 ============ */
 .scroll {
   flex: 1 1 auto;

@@ -4,7 +4,20 @@ const CACHE = 'bwc-v4-__BUILD__';
 const ASSETS = ['/', '/index.html', '/styles.css', '/md.js', '/app.js', '/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(ASSETS))
+      .then(() => self.clients.matchAll())
+      .then((list) => {
+        // 首次安装（无受控页面）直接接管；已有页面在使用时等页面指令，避免打断进行中的操作
+        if (!list.length) return self.skipWaiting();
+      })
+  );
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
