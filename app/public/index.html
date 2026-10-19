@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0d" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="爆款文案" />
+<title>爆款文案生成器 · 抖音带货</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/icon-512.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <header class="appbar">
+    <div class="brand">
+      <div class="logo">爆</div>
+      <div class="brand-txt">
+        <h1>爆款文案生成器</h1>
+        <p id="brandStatus">检测模型状态中…</p>
+      </div>
+    </div>
+    <button class="mode-badge" id="modeBadge" type="button">演示模式</button>
+  </header>
+
+  <!-- ================= 生成页 ================= -->
+  <main class="scroll" id="view-generate">
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>快速填充 <em class="ct-opt">选填</em></h2>
+
+      <label class="field">
+        <span class="label">商品链接</span>
+        <div class="inline-row">
+          <input id="productUrl" type="text" placeholder="粘贴商品详情页网址，自动解析标题与卖点" autocomplete="off" />
+          <button class="btn btn-ghost btn-sm" id="btnExtract" type="button">解析</button>
+        </div>
+      </label>
+
+      <div class="field">
+        <span class="label">商品主图 <em>需模型支持识图，建议先用链接或手填</em></span>
+        <div class="inline-row">
+          <input id="productImage" type="file" accept="image/*" />
+          <button class="btn btn-ghost btn-sm" id="btnVision" type="button">识图</button>
+        </div>
+        <img id="imgPreview" class="img-preview hidden" alt="商品主图预览" />
+      </div>
+
+      <label class="field">
+        <span class="label">粘贴提炼 <em>商品页打不开时，把标题+卖点原文粘贴进来一键提炼（Ctrl+Enter 提炼）</em></span>
+        <textarea id="pasteText" rows="3" placeholder="粘贴商品标题、卖点等原文，支持多行" style="resize:vertical"></textarea>
+        <button class="btn btn-ghost btn-sm" id="btnParseText" type="button" style="margin-top:6px">提炼</button>
+      </label>
+
+      <p class="hint" id="fillHint"></p>
+
+      <div class="inline-row">
+        <button class="btn btn-ghost" id="btnOpImport" type="button">从选品分析导入</button>
+        <span class="hint" style="flex:1">读取 OrderPulse 选品库，自动填商品与卖点</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>商品信息</h2>
+
+      <label class="field">
+        <span class="label">商品名称</span>
+        <input id="productName" type="text" placeholder="例：便携榨汁杯 / 双面德绒打底衫" autocomplete="off" />
+      </label>
+
+      <div class="field">
+        <span class="label">商品品类</span>
+        <div class="chips" data-field="category">
+          <span class="chip">美妆护肤</span><span class="chip">食品生鲜</span>
+          <span class="chip">服饰鞋包</span><span class="chip">家居日用</span>
+          <span class="chip">数码家电</span><span class="chip">母婴亲子</span>
+          <span class="chip">个护健康</span><span class="chip">其它</span>
+        </div>
+      </div>
+
+      <label class="field">
+        <span class="label">核心卖点 <em>一行一个，建议至少 2 个</em></span>
+        <textarea id="sellingPoints" rows="4" placeholder="充电一次用一周&#10;一键清洗不脏手&#10;杯身可拆当水杯"></textarea>
+      </label>
+
+      <label class="field">
+        <span class="label">目标人群</span>
+        <input id="audience" type="text" placeholder="例：25-35岁上班族女生 / 健身减脂人群" autocomplete="off" />
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span class="label">价格 / 优惠</span>
+          <input id="price" type="text" placeholder="例：39.9元，第二件半价" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="label">使用场景</span>
+          <input id="usageScene" type="text" placeholder="例：早上赶时间喝果汁" autocomplete="off" />
+        </label>
+      </div>
+
+      <div class="field">
+        <span class="label">视频时长</span>
+        <div class="seg" data-field="duration">
+          <button type="button" data-val="15">15 秒</button>
+          <button type="button" data-val="30" class="on">30 秒</button>
+          <button type="button" data-val="60">60 秒</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label">文案风格</span>
+        <div class="chips" data-field="tone">
+          <span class="chip on">接地气</span><span class="chip">幽默</span>
+          <span class="chip">专业测评</span><span class="chip">情感共鸣</span>
+          <span class="chip">反差搞笑</span><span class="chip">质感高端</span>
+        </div>
+      </div>
+
+      <label class="field">
+        <span class="label">账号人设 <em>选填，会用于沉淀打法分析</em></span>
+        <input id="persona" type="text" placeholder="例：懂行的工厂老板娘 / 热心邻居宝妈" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="label">补充要求 <em>选填</em></span>
+        <textarea id="extra" rows="2" placeholder="例：别提减肥功效；要有对比镜头；面向宝妈人群"></textarea>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>生成场景</h2>
+      <div class="seg seg-lg" data-field="scene">
+        <button type="button" data-val="talk" class="on">口播脚本</button>
+        <button type="button" data-val="title">标题 · 话题</button>
+        <button type="button" data-val="storyboard">分镜脚本</button>
+      </div>
+      <p class="hint" id="sceneHint"></p>
+
+      <div class="field" id="countField">
+        <span class="label">批量变体数量 <em>生成多个不同角度版本，便于 A/B 投放</em></span>
+        <div class="seg" data-field="count">
+          <button type="button" data-val="1" class="on">单版本</button>
+          <button type="button" data-val="3">3 版</button>
+          <button type="button" data-val="5">5 版</button>
+          <button type="button" data-val="8">8 版</button>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnGenerateCurrent" type="button">生成当前场景</button>
+        <button class="btn btn-ghost" id="btnGenerateAll" type="button">一键全生成</button>
+      </div>
+    </section>
+
+    <p class="foot-tip">文案仅作创作参考，发布前请核对价格、优惠与商品事实，并遵守平台规则与广告法。</p>
+  </main>
+
+  <!-- ================= 历史页 ================= -->
+  <main class="scroll hidden" id="view-history">
+    <div class="page-head">
+      <h2>历史记录</h2>
+      <div class="head-acts">
+        <label class="switch"><input type="checkbox" id="cloudSync" /><span>云同步</span></label>
+        <button class="link-btn" id="btnHistoryRefresh" type="button">刷新</button>
+        <button class="link-btn" id="btnClearHistory" type="button">清空</button>
+      </div>
+    </div>
+    <div id="historyList"></div>
+  </main>
+
+  <!-- ================= 打法分析页 ================= -->
+  <main class="scroll hidden" id="view-analysis">
+    <div class="page-head">
+      <h2>打法分析</h2>
+      <div class="head-acts">
+        <button class="link-btn" id="btnAbRefresh" type="button">刷新</button>
+      </div>
+    </div>
+    <div id="abBody"></div>
+  </main>
+
+  <!-- ================= 设置页 ================= -->
+  <main class="scroll hidden" id="view-settings">
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>大模型接口</h2>
+      <p class="hint">留空即用服务端 <code>.env</code> 配置。这里填写只保存在本机浏览器，用于个人自用。</p>
+      <label class="field">
+        <span class="label">API Key</span>
+        <input id="cfgKey" type="password" placeholder="sk-…（留空走服务端配置）" autocomplete="off" />
+      </label>
+      <label class="field">
+        <span class="label">Base URL</span>
+        <input id="cfgBase" type="text" placeholder="https://api.deepseek.com/v1" autocomplete="off" />
+      </label>
+      <label class="field">
+        <span class="label">模型名 <em>可填多个，用逗号分隔表示回退顺序</em></span>
+        <input id="cfgModel" type="text" placeholder="deepseek-chat,gpt-4o-mini" autocomplete="off" />
+      </label>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnSaveCfg" type="button">保存配置</button>
+        <button class="btn btn-ghost" id="btnTestCfg" type="button">测试连接</button>
+      </div>
+      <p class="hint" id="cfgResult"></p>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>访问口令</h2>
+      <p class="hint" id="tokenHint">未启用。设置后，所有接口需带口令才能访问，适合部署在公网自用。</p>
+      <label class="field">
+        <span class="label">口令 <em>至少 4 位，留空表示关闭鉴权</em></span>
+        <input id="tokenInput" type="text" placeholder="访问口令" autocomplete="off" />
+      </label>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnSaveToken" type="button">保存口令</button>
+        <button class="btn btn-ghost" id="btnCheckToken" type="button">校验</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>热词库 <em class="ct-opt">服务端</em></h2>
+      <p class="hint">生成时注入全部场景。每行一个分组，格式：<code>组名: 词1 词2 词3</code></p>
+      <label class="field">
+        <span class="label">话题标签池</span>
+        <textarea id="hotwordsBox" rows="6" placeholder="泛流量: 好物推荐 抖音好物 涨知识&#10;精准人群: 上班族 宝妈必备 学生党&#10;品类场景: 居家好物 平价好物 厨房神器"></textarea>
+      </label>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnSaveHotwords" type="button">保存热词库</button>
+        <button class="btn btn-ghost" id="btnResetHotwords" type="button">恢复默认</button>
+      </div>
+      <p class="hint" id="hotwordsHint"></p>
+
+      <div class="trend-block">
+        <p class="hint">把抖音热榜 / 巨量算数等榜单文字粘贴进来，一键提炼入库。热榜词带有效期，到期自动停止注入；仅在与商品相关时才会被借用，不硬蹭。</p>
+        <label class="field">
+          <span class="label">热榜原文</span>
+          <textarea id="trendingText" rows="3" placeholder="粘贴热榜列表，例如：&#10;1. 秋天的第一杯奶茶 热&#10;2. 宿舍收纳挑战 沸&#10;#好物分享 #开箱"></textarea>
+        </label>
+        <div class="btn-row">
+          <select id="trendingTtl" class="sel">
+            <option value="3">有效 3 天</option>
+            <option value="7" selected>有效 7 天</option>
+            <option value="15">有效 15 天</option>
+          </select>
+          <button class="btn btn-primary" id="btnParseTrending" type="button">提炼热榜入库</button>
+          <button class="btn btn-ghost" id="btnClearTrending" type="button">清空热榜</button>
+        </div>
+        <p class="hint" id="trendingHint"></p>
+        <div id="trendingList"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>爆款样本库 <em class="ct-opt">服务端</em></h2>
+      <p class="hint">生成时会自动检索最相关的样本作为结构参考（few-shot），不会照抄内容。</p>
+      <div id="sampleList"></div>
+      <div class="sub-form">
+        <div class="field-row">
+          <label class="field">
+            <span class="label">场景</span>
+            <div class="seg seg-sm" data-field="sampleScene">
+              <button type="button" data-val="talk" class="on">口播</button>
+              <button type="button" data-val="title">标题</button>
+              <button type="button" data-val="storyboard">分镜</button>
+            </div>
+          </label>
+          <label class="field">
+            <span class="label">品类</span>
+            <input id="sampleCategory" type="text" placeholder="例：家居日用" autocomplete="off" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="label">备注</span>
+          <input id="sampleNote" type="text" placeholder="例：反常识钩子结构" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="label">样本正文 <em>Markdown</em></span>
+          <textarea id="sampleText" rows="4" placeholder="## 黄金3秒钩子&#10;…"></textarea>
+        </label>
+        <button class="btn btn-ghost btn-block" id="btnAddSample" type="button">添加样本</button>
+        <p class="hint" id="samplesHint"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>安装到手机</h2>
+      <p class="hint">手机上用浏览器打开本页 → 浏览器菜单选「添加到主屏幕」，即可像 App 一样全屏使用，桌面会出现独立图标。</p>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span class="dot"></span>关于</h2>
+      <p class="hint">抖音短视频带货爆款文案生成器 · 覆盖口播脚本 / 标题话题 / 分镜脚本三大场景，内置爆款结构（黄金3秒钩子、痛点共鸣、卖点翻译、信任背书、逼单 CTA）与广告法合规红线约束。</p>
+    </section>
+  </main>
+
+  <!-- ================= 选品导入弹层 ================= -->
+  <div class="op-mask hidden" id="opMask">
+    <div class="op-modal">
+      <div class="op-head">
+        <span>选择要导入的选品商品</span>
+        <button class="op-close" id="btnOpClose" type="button">×</button>
+      </div>
+      <div class="op-list" id="opList"></div>
+    </div>
+  </div>
+
+  <!-- ================= 底部导航 ================= -->
+  <nav class="tabbar">
+    <button type="button" class="tab on" data-view="generate">
+      <span class="tab-ico">✦</span><span>生成</span>
+    </button>
+    <button type="button" class="tab" data-view="history">
+      <span class="tab-ico">☰</span><span>历史</span>
+    </button>
+    <button type="button" class="tab" data-view="analysis">
+      <span class="tab-ico">↗</span><span>分析</span>
+    </button>
+    <button type="button" class="tab" data-view="settings">
+      <span class="tab-ico">⚙</span><span>设置</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ================= 结果面板 ================= -->
+<section class="sheet" id="resultSheet" aria-hidden="true">
+  <header class="sheet-bar">
+    <button class="icon-btn" id="btnSheetClose" type="button" aria-label="返回">‹</button>
+    <div class="seg seg-sm" id="sheetSeg">
+      <button type="button" data-val="talk" class="on">口播</button>
+      <button type="button" data-val="title">标题</button>
+      <button type="button" data-val="storyboard">分镜</button>
+    </div>
+    <button class="icon-btn" id="btnSheetCopy" type="button" aria-label="复制">⧉</button>
+  </header>
+  <div class="sheet-body">
+    <div class="compliance hidden" id="complianceBar"></div>
+    <div class="stream-state" id="streamState"></div>
+    <article class="md" id="resultBody"></article>
+    <div class="edit-wrap hidden" id="editWrap">
+      <p class="hint">直接编辑 Markdown 原文，完成后重新渲染与合规检查。</p>
+      <textarea id="editArea" rows="16"></textarea>
+    </div>
+  </div>
+  <footer class="sheet-foot">
+    <div class="sheet-tools">
+      <button class="tool-btn" id="btnEdit" type="button">编辑</button>
+      <button class="tool-btn" id="btnExport" type="button">导出 .md</button>
+      <button class="tool-btn" id="btnCheck" type="button">合规检查</button>
+      <button class="tool-btn hidden" id="btnAddVariant" type="button">再来一版</button>
+    </div>
+    <div class="sheet-main">
+      <button class="btn btn-ghost" id="btnRegen" type="button">重新生成</button>
+      <button class="btn btn-primary" id="btnCopyAll" type="button">复制全部</button>
+    </div>
+  </footer>
+</section>
+
+<!-- ================= 局部重写浮层 ================= -->
+<div class="rw-mask hidden" id="rwMask">
+  <div class="rw-panel">
+    <header class="rw-head">
+      <span id="rwTitle">局部重写</span>
+      <button class="icon-btn" id="btnRwClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="rw-body">
+      <p class="hint">正在重写：<strong id="rwSection"></strong></p>
+      <label class="field">
+        <span class="label">重写要求 <em>选填</em></span>
+        <textarea id="rwInstruction" rows="2" placeholder="例：更口语一点；加入一个具体使用场景；强调便携"></textarea>
+      </label>
+      <div class="rw-stream md" id="rwStream"></div>
+      <p class="hint" id="rwError"></p>
+    </div>
+    <footer class="rw-foot">
+      <button class="btn btn-ghost" id="btnRwCancel" type="button">取消</button>
+      <button class="btn btn-ghost" id="btnRwStart" type="button">开始重写</button>
+      <button class="btn btn-primary" id="btnRwApply" type="button" disabled>替换原文</button>
+    </footer>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/md.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

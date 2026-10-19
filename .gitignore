@@ -1,0 +1,11 @@
+# 运行时数据（历史/热词/样本/账号）
+app/.data/
+
+# 依赖与构建
+node_modules/
+
+# 日志与临时文件
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
