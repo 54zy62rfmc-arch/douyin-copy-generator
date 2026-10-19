@@ -9,3 +9,7 @@ node_modules/
 *.tmp
 .DS_Store
 Thumbs.db
+
+# 环境变量与 HTTPS 证书（包含 API Key）
+app/.env
+app/ssl/
