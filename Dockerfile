@@ -6,6 +6,10 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=8000
 
+# 强制打破构建缓存
+ARG CACHE_BUST=20261019
+RUN echo "cache-bust: ${CACHE_BUST}"
+
 # 仅复制运行所需文件
 COPY app/package.json ./
 COPY app/server.js ./
