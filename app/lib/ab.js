@@ -12,6 +12,7 @@ const DIMENSIONS = [
   { key: 'tone', label: '情绪基调' },
   { key: 'persona', label: '人设' },
   { key: 'duration', label: '时长' },
+  { key: 'rating', label: '人工评分' }, // 人工质量打分回流：对照人工判断与真实数据表现
 ];
 
 /** 从口播脚本中提取主选钩子的策略标注，如 "主选：……（反常识）" → 反常识 */
@@ -67,6 +68,7 @@ function collectRecords(items) {
       tone: String(it.form?.tone || '').trim(),
       persona: String(it.form?.persona || '').trim(),
       duration: String(it.form?.duration || '').trim(),
+      rating: String(it.rating || '').trim(),
     });
   }
   return out;

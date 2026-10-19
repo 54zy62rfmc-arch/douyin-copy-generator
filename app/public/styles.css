@@ -706,6 +706,15 @@ mark.risk.risk-low { background: rgba(127, 142, 163, 0.18); border-bottom: 2px d
 .ab-table tr.ab-low td { color: var(--dim); font-weight: 400; background: transparent; }
 .ab-dim .card-title { margin-bottom: 10px; }
 
+/* 历史卡片：人工质量打分 */
+.rate-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.rate-label { font-size: 11px; color: var(--dim); }
+.rate-btn {
+  border: 1px solid var(--line); background: var(--card-2); color: var(--dim);
+  font-size: 11px; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+}
+.rate-btn.on { color: var(--pink-2); border-color: var(--pink); background: rgba(254, 44, 85, 0.12); }
+
 /* ============ 新增：选品导入弹层 ============ */
 .op-mask {
   position: fixed; inset: 0; z-index: 60;

@@ -217,7 +217,8 @@ ${parts.join('\n\n')}`;
 
 /** 历史投放数据洞察（由 A/B 分析模块产出 winners 后反哺进提示词） */
 function insightBlock(insight) {
-  const winners = insight && Array.isArray(insight.winners) ? insight.winners : [];
+  // 人工评分维度只用于分析页对照，不参与生成注入（评分无法由模型复现）
+  const winners = (insight && Array.isArray(insight.winners) ? insight.winners : []).filter((w) => w.dimension !== 'rating');
   if (!winners.length) return '';
   const lines = winners.map((w) => {
     const parts = [];

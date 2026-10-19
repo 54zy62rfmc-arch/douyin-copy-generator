@@ -100,6 +100,21 @@ test('validMetrics：保留录入时间戳 at', () => {
   assert.strictEqual(ab.validMetrics({ views: 100 }).at, undefined);
 });
 
+test('analyze：人工评分维度分组；insightBlock 不注入评分维度', () => {
+  const items = [
+    { id: '1', rating: '好', form: { tone: '幽默' }, metrics: { views: 10000, retention: 50, cvr: 3, gmv: 900 } },
+    { id: '2', rating: '差', form: { tone: '幽默' }, metrics: { views: 8000, retention: 20, cvr: 1, gmv: 100 } },
+    { id: '3', form: { tone: '幽默' }, metrics: { views: 5000, retention: 30 } }, // 未打分不进入评分维度
+  ];
+  const out = ab.analyze(items);
+  const dim = out.dimensions.find((d) => d.key === 'rating');
+  assert.ok(dim);
+  assert.strictEqual(dim.groups.length, 2); // 只有「好」「差」两组
+  assert.strictEqual(dim.groups[0].value, '好'); // 好 的数据表现更优排前
+  const block = insightBlock({ sampleCount: out.sampleCount, winners: out.winners });
+  assert.ok(!block.includes('人工评分'));
+});
+
 test('insightBlock：生成反哺提示词块', () => {
   const out = ab.analyze([
     { id: '1', form: { tone: '幽默' }, hookType: '反常识', metrics: { views: 10000, retention: 45, cvr: 2, gmv: 800 } },

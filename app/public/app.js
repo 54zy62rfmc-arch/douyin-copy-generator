@@ -936,6 +936,9 @@ async function renderHistory() {
       const time = `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
       const mline = it.metrics ? `<div class="hist-metrics">已录投放：${escapeHtml(metricsSummary(it.metrics))}</div>` : '';
       const panel = state.metricsOpen === it.id ? metricsPanelHtml(it.id, it.metrics) : '';
+      const rateRow = `<div class="rate-row"><span class="rate-label">质量打分</span>${['好', '一般', '差']
+        .map((v) => `<button class="rate-btn${it.rating === v ? ' on' : ''}" data-rate="${it.id}" data-rate-val="${v}" type="button">${v}</button>`)
+        .join('')}</div>`;
       return `<div class="hist-item" data-id="${it.id}">
         <div class="hist-main">
           <p class="hist-name">${escapeHtml(it.name)}</p>
@@ -944,11 +947,29 @@ async function renderHistory() {
           ${mline}
           <button class="tool-btn m-btn" data-metrics="${it.id}" type="button">${it.metrics ? '改投放数据' : '录投放数据'}</button>
           ${panel}
+          ${rateRow}
         </div>
         <button class="hist-del" data-del="${it.id}" type="button">×</button>
       </div>`;
     })
     .join('');
+}
+
+/* 人工质量打分：好/一般/差，再点一次取消；回流到打法分析「按人工评分」维度 */
+async function setRating(id, val) {
+  const list = localHistory();
+  const idx = list.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+  const next = list[idx].rating === val ? '' : val;
+  list[idx] = { ...list[idx], rating: next };
+  save(LS.history, list);
+  if (isCloud()) {
+    try {
+      await fetch('/api/history', { method: 'POST', headers: llmHeaders(), body: JSON.stringify({ item: list[idx] }) });
+    } catch {}
+  }
+  renderHistory();
+  toast(next ? `已打「${next}」` : '已取消打分');
 }
 
 function openHistoryItem(id) {
@@ -1009,7 +1030,7 @@ async function saveMetrics(id) {
 function slimHistory() {
   return localHistory()
     .filter((x) => x.metrics)
-    .map(({ id, name, form, metrics, hookType, ts }) => ({ id, name, form, metrics, hookType, ts }));
+    .map(({ id, name, form, metrics, hookType, ts, rating }) => ({ id, name, form, metrics, hookType, ts, rating }));
 }
 
 /* 启动时把本机积累的投放数据一次性合并到服务端，避免本地/服务端双轨分叉 */
@@ -1843,6 +1864,11 @@ function init() {
       }
       renderHistory();
       toast('已删除');
+      return;
+    }
+    const rate = e.target.closest('[data-rate-val]');
+    if (rate) {
+      setRating(rate.dataset.rate, rate.dataset.rateVal);
       return;
     }
     const msave = e.target.closest('[data-msave]');
