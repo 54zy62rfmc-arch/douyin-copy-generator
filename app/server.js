@@ -48,7 +48,7 @@ function loadEnvFile() {
 }
 loadEnvFile();
 
-process.env.__BUILD = 'build-20261019-3';
+process.env.__BUILD = 'build-20261019-4';
 
 // Railway Raw Editor 中带引号的值会把引号包含进 process.env，这里统一去除首尾引号
 for (const key of Object.keys(process.env)) {
@@ -830,7 +830,7 @@ function getLan() {
 
 function handleDebugEnv(req, res) {
   const keys = Object.keys(process.env).filter((k) =>
-    /^(LLM_|API_KEY|ACCESS_TOKEN|PORT|DATA_DIR)/i.test(k)
+    /^(LLM_|API_KEY|ACCESS_TOKEN|PORT|DATA_DIR|__BUILD)/i.test(k)
   );
   const out = {};
   for (const k of keys) {
