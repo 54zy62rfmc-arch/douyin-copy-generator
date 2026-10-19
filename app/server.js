@@ -825,7 +825,11 @@ function handleDebugEnv(req, res) {
   const out = {};
   for (const k of keys) {
     const v = process.env[k] || '';
-    out[k] = v.length > 8 ? v.slice(0, 4) + '***' + v.slice(-4) : '(empty)';
+    if (k === 'ACCESS_TOKEN') {
+      out[k] = { len: v.length, first: JSON.stringify(v.slice(0, 6)), last: JSON.stringify(v.slice(-6)) };
+    } else {
+      out[k] = v.length > 8 ? v.slice(0, 4) + '***' + v.slice(-4) : '(empty)';
+    }
   }
   sendJson(res, 200, out);
 }
