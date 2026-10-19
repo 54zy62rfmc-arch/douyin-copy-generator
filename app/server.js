@@ -20,7 +20,7 @@ const os = require('node:os');
 const { buildMessages, buildRewriteMessages, buildExtractMessages, buildParseMessages, buildTrendingMessages, buildComplianceMessages, buildVisionMessages, buildVisionMetricsMessages, SCENE_LABEL, pickAngles } = require('./lib/prompts');
 const { streamSmart, collect, extractJson } = require('./lib/llm');
 const { buildDemo, rewriteSection, VARIANT_SCENES, DEMO_NOTE } = require('./lib/demo');
-const { scan, groupByCategory, safeRewrite } = require('./lib/compliance');
+const { scan, groupByCategory, safeRewrite, RULES } = require('./lib/compliance');
 const { selectSamples } = require('./lib/samples');
 const { heuristicFromHtml, heuristicParseText, heuristicParseTrending, stripTags } = require('./lib/extract');
 const ab = require('./lib/ab');
@@ -501,6 +501,23 @@ async function handleCompliance(req, res) {
   });
 }
 
+/* ---------- 合规词表可视化（只读） ---------- */
+function handleComplianceRules(req, res) {
+  const rules = RULES.map((r) => ({
+    id: r.id,
+    cat: r.cat,
+    sev: r.sev,
+    tip: r.tip,
+    words: r.words || [],
+    patterns: (r.patterns || []).map((p) => p.label),
+    soft: r.soft || [],
+    fix: r.fix || {},
+  }));
+  const totalWords = rules.reduce((n, r) => n + r.words.length, 0);
+  const totalPatterns = rules.reduce((n, r) => n + r.patterns.length, 0);
+  sendJson(res, 200, { ok: true, rules, totalWords, totalPatterns });
+}
+
 /* ---------- OrderPulse 选品代理（打通选品分析 → 文案表单） ---------- */
 const OP_BASE = (process.env.ORDERPULSE_URL || 'http://127.0.0.1:8530').replace(/\/+$/, '');
 
@@ -902,6 +919,7 @@ const server = (() => {
     if (url === '/api/extract' && req.method === 'POST') return handleExtract(req, res);
     if (url === '/api/vision' && req.method === 'POST') return handleVision(req, res);
     if (url === '/api/compliance' && req.method === 'POST') return handleCompliance(req, res);
+    if (url === '/api/compliance/rules' && req.method === 'GET') return handleComplianceRules(req, res);
     if (url === '/api/compliance-fix' && req.method === 'POST') return handleComplianceFix(req, res);
     if (url === '/api/ab-analysis' && (req.method === 'GET' || req.method === 'POST')) return handleAbAnalysis(req, res);
     if (url === '/api/parse-text' && req.method === 'POST') return handleParseText(req, res);

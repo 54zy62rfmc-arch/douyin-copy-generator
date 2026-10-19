@@ -770,6 +770,37 @@ mark.risk.risk-low { background: rgba(127, 142, 163, 0.18); border-bottom: 2px d
 .op-item-meta { margin-top: 4px; font-size: 11.5px; color: var(--dim); }
 .op-empty { padding: 30px 10px; text-align: center; color: var(--dim); font-size: 12.5px; }
 
+/* ============ 合规词表可视化 ============ */
+.rule-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 10px; background: var(--card-2); }
+.rule-head { display: flex; align-items: center; gap: 8px; }
+.rule-sev {
+  flex: 0 0 auto; font-size: 10.5px; padding: 1px 8px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--dim);
+}
+.rule-sev.high { color: var(--pink-2); border-color: rgba(254, 44, 85, 0.5); background: rgba(254, 44, 85, 0.08); }
+.rule-sev.mid { color: #d9a13c; border-color: rgba(217, 161, 60, 0.5); background: rgba(217, 161, 60, 0.08); }
+.rule-cat { flex: 1 1 auto; font-size: 13px; font-weight: 600; }
+.rule-count { flex: 0 0 auto; font-size: 11px; color: var(--dim); }
+.rule-toggle {
+  flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; background: none;
+  color: var(--dim); font-size: 11px; padding: 2px 10px; cursor: pointer;
+}
+.rule-toggle:active { border-color: var(--pink); color: var(--pink-2); }
+.rule-tip { margin: 6px 0 0; font-size: 11.5px; color: var(--dim); line-height: 1.55; }
+.rule-words { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+.rule-word {
+  font-size: 11.5px; padding: 2px 8px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+}
+.rule-word.has-fix { border-color: rgba(61, 220, 132, 0.4); }
+.rule-word.soft { color: var(--dim); border-style: dashed; }
+.rule-pattern {
+  font-size: 11.5px; padding: 2px 8px; border-radius: 6px;
+  border: 1px dashed rgba(37, 244, 238, 0.35); color: var(--cyan); background: rgba(37, 244, 238, 0.05);
+}
+.rule-legend { margin-top: 8px; font-size: 11px; color: var(--dim); }
+.rule-legend .rule-word, .rule-legend .rule-pattern { cursor: default; }
+
 @media (min-width: 561px) {
   .op-mask { align-items: center; }
   .op-modal { border-radius: 14px; border-bottom: 1px solid var(--line); }

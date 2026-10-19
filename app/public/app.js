@@ -1702,6 +1702,51 @@ async function refreshModeBadge() {
   }
 }
 
+/* ========== 合规词表可视化 ========== */
+const RULE_SEV_LABEL = { high: '高危', mid: '中风险', low: '提示' };
+
+async function renderComplianceRules() {
+  const box = $('#complianceRules');
+  if (!box) return;
+  try {
+    const res = await fetch('/api/compliance/rules', { headers: llmHeaders() });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || '加载失败');
+    const parts = [];
+    for (const r of j.rules) {
+      const count = r.words.length + r.patterns.length;
+      const words = r.words.map((w) => {
+        const fix = r.fix[w];
+        const soft = r.soft.includes(w);
+        const cls = ['rule-word', fix ? 'has-fix' : '', soft ? 'soft' : ''].filter(Boolean).join(' ');
+        const title = fix
+          ? ` title="一键改写为：${escapeHtml(fix)}"`
+          : soft
+            ? ' title="提示级：弱风险或依赖语境，命中后需人工确认"'
+            : '';
+        return `<span class="${cls}"${title}>${escapeHtml(w)}</span>`;
+      });
+      const patterns = r.patterns.map(
+        (p) => `<span class="rule-pattern" title="按模式规则匹配，非固定词">模式 · ${escapeHtml(p)}</span>`
+      );
+      parts.push(`<div class="rule-item">
+        <div class="rule-head">
+          <span class="rule-sev ${r.sev}">${RULE_SEV_LABEL[r.sev] || r.sev}</span>
+          <span class="rule-cat">${escapeHtml(r.cat)}</span>
+          <span class="rule-count">${count} 项</span>
+          <button type="button" class="rule-toggle" data-rule="${r.id}">展开</button>
+        </div>
+        <p class="rule-tip">${escapeHtml(r.tip)}</p>
+        <div class="rule-words hidden" id="rule-${r.id}">${words.join('')}${patterns.join('')}</div>
+      </div>`);
+    }
+    parts.push(`<p class="rule-legend">共 ${j.totalWords} 个风险词 + ${j.totalPatterns} 类模式规则。悬停词条可查看建议改写；<span class="rule-word has-fix">绿框</span> 支持一键改写，<span class="rule-word soft">虚线</span> 为提示级词（语境豁免），<span class="rule-pattern">青框</span> 为模式规则。</p>`);
+    box.innerHTML = parts.join('');
+  } catch (e) {
+    box.innerHTML = `<p class="hint err">词表加载失败：${escapeHtml(e.message)}</p>`;
+  }
+}
+
 /* ========== Tab 切换 ========== */
 function goTab(view) {
   $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.view === view));
@@ -2028,6 +2073,17 @@ function init() {
   renderHistory();
   syncMetricsToCloud().then(() => renderHistory());
   refreshModeBadge();
+  renderComplianceRules();
+
+  // 合规词表展开/收起（事件委托）
+  $('#complianceRules').addEventListener('click', (e) => {
+    const btn = e.target.closest('.rule-toggle');
+    if (!btn) return;
+    const list = document.getElementById('rule-' + btn.dataset.rule);
+    if (!list) return;
+    const opening = list.classList.toggle('hidden');
+    btn.textContent = opening ? '展开' : '收起';
+  });
 
   if ('serviceWorker' in navigator) setupSwUpdate();
 }

@@ -82,3 +82,14 @@ test('safeRewrite：空建议词归入 missed 且保留原文', () => {
   assert.ok(r.text.includes('加微信'), '无建议词应保留原文，避免句子破碎');
   assert.ok(r.replaced.some((s) => s.startsWith('免费领→')), '有建议词应被替换');
 });
+
+test('RULES：可视化词表结构完整（id/cat/sev/tip 齐备）', () => {
+  const { RULES } = require('../lib/compliance');
+  assert.ok(RULES.length >= 5, '至少 5 类规则');
+  for (const r of RULES) {
+    assert.ok(r.id && r.cat && r.sev && r.tip, `规则 ${r.id} 结构完整`);
+    assert.ok(['high', 'mid', 'low'].includes(r.sev), `规则 ${r.id} 严重度合法`);
+    const itemCount = (r.words || []).length + (r.patterns || []).length;
+    assert.ok(itemCount > 0, `规则 ${r.id} 至少有一条词或模式`);
+  }
+});
