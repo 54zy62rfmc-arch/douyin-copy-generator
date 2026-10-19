@@ -48,7 +48,7 @@ function loadEnvFile() {
 }
 loadEnvFile();
 
-process.env.__BUILD = 'build-20261019-5';
+process.env.__BUILD = 'build-20261019-6';
 
 // Railway Raw Editor 中带引号的值会把引号包含进 process.env，这里统一去除首尾引号
 for (const key of Object.keys(process.env)) {
@@ -369,6 +369,42 @@ async function handleRewrite(req, res) {
 }
 
 /* ---------- /api/extract ---------- */
+/**
+ * 抖音商品短链跳转后的落地页 URL（haohuo.jinritemai.com）常带 goods_detail 参数，
+ * 是双层 URL 编码的 JSON，内含标题/价格(分)/销量/主图，可直接秒级提取，无需抓取动态渲染页面。
+ */
+function parseGoodsDetailFromUrl(fullUrl) {
+  if (!fullUrl || fullUrl.indexOf('goods_detail=') < 0) return null;
+  try {
+    const u = new URL(fullUrl);
+    let raw = u.searchParams.get('goods_detail');
+    if (!raw) return null;
+    for (let i = 0; i < 2 && raw && raw[0] !== '{'; i++) {
+      try { raw = decodeURIComponent(raw); } catch { break; }
+    }
+    const d = JSON.parse(raw);
+    const title = String(d.title || '').trim();
+    if (!title) return null;
+    const fmt = (v) => (Number.isFinite(+v) && +v > 0 ? (Math.round(+v) / 100).toFixed(2).replace(/\.?0+$/, '') : '');
+    const minP = fmt(d.min_price);
+    const maxP = fmt(d.max_price);
+    const price = minP && maxP && minP !== maxP ? `${minP}-${maxP}元` : minP ? `${minP}元` : '';
+    const img = d.img && Array.isArray(d.img.url_list) && d.img.url_list.length ? String(d.img.url_list[0]) : '';
+    return {
+      productName: title.slice(0, 80),
+      category: '',
+      sellingPoints: [],
+      price,
+      audience: '',
+      usageScene: '',
+      extra: d.sales ? `已售约${d.sales}件` : '',
+      coverImage: img,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function handleExtract(req, res) {
   let payload;
   try {
@@ -405,13 +441,17 @@ async function handleExtract(req, res) {
       });
     }
     const html = res1.body || '';
-    if (html.length < 200) {
+    const finalUrl = res1.finalUrl || url;
+
+    // 抖音商品短链跳转后，落地页 URL 的 goods_detail 参数里常直接内嵌标题/价格/销量，优先秒级提取
+    const redirectInfo = parseGoodsDetailFromUrl(finalUrl);
+    if (!redirectInfo && html.length < 200) {
       return sendJson(res, 200, { ok: false, message: '页面内容过少（可能为动态渲染或需要登录），建议手动填写。' });
     }
-    const info = heuristicFromHtml(html, res1.finalUrl || url);
-    let mode = 'heuristic';
+    const info = redirectInfo || heuristicFromHtml(html, finalUrl);
+    let mode = redirectInfo ? 'redirect' : 'heuristic';
 
-    if (cfg.apiKey) {
+    if (cfg.apiKey && !redirectInfo) {
       try {
         const pageText = stripTags(html).slice(0, 5000);
         const out = await collect(
