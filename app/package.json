@@ -1,6 +1,6 @@
 {
   "name": "douyin-viral-copy-generator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "抖音短视频带货爆款文案生成器（移动端 PWA + 大模型 API）",
   "type": "commonjs",
