@@ -728,7 +728,17 @@ async function handleHistory(req, res) {
   const action = payload.action || 'upsert';
   if (action === 'delete') store.deleteHistory(payload.id);
   else if (action === 'clear') store.clearHistory();
-  else if (payload.item?.id) store.upsertHistory(payload.item);
+  else if (action === 'merge' && Array.isArray(payload.items)) {
+    // 客户端离线期间积累的投放数据/历史，启动时一次性合并进服务端，避免双轨分叉
+    let n = 0;
+    for (const it of payload.items) {
+      if (it && it.id) {
+        store.upsertHistory(it);
+        n++;
+      }
+    }
+    return sendJson(res, 200, { ok: true, merged: n, items: store.getHistory() });
+  } else if (payload.item?.id) store.upsertHistory(payload.item);
   sendJson(res, 200, { ok: true, items: store.getHistory() });
 }
 

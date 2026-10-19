@@ -1010,6 +1010,23 @@ function slimHistory() {
     .map(({ id, name, form, metrics, hookType }) => ({ id, name, form, metrics, hookType }));
 }
 
+/* 启动时把本机积累的投放数据一次性合并到服务端，避免本地/服务端双轨分叉 */
+async function syncMetricsToCloud() {
+  if (!isCloud()) return;
+  const items = slimHistory();
+  if (!items.length) return;
+  try {
+    const res = await fetch('/api/history', {
+      method: 'POST',
+      headers: llmHeaders(),
+      body: JSON.stringify({ action: 'merge', items }),
+    });
+    if (handleUnauthorized(res)) return;
+    const j = await res.json();
+    if (j && Array.isArray(j.items)) save(LS.history, j.items.slice(0, 60));
+  } catch {}
+}
+
 async function loadAnalysis() {
   const box = $('#abBody');
   box.innerHTML = '<div class="empty">正在分析…</div>';
@@ -1815,6 +1832,7 @@ function init() {
   $('#btnAddSample').addEventListener('click', addSample);
 
   renderHistory();
+  syncMetricsToCloud().then(() => renderHistory());
   refreshModeBadge();
 
   if ('serviceWorker' in navigator) {
