@@ -5,5 +5,4 @@ test
 *.log
 .git
 .gitignore
-Dockerfile
-.dockerignore
+app/test

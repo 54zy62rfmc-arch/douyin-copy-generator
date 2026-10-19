@@ -6,11 +6,11 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=8000
 
-# 仅复制运行所需文件（server.js + lib + public + package.json）
-COPY package.json ./
-COPY server.js ./
-COPY lib ./lib
-COPY public ./public
+# 仅复制运行所需文件
+COPY app/package.json ./
+COPY app/server.js ./
+COPY app/lib ./lib
+COPY app/public ./public
 
 # 历史 / 热词 / 样本 / 访问口令等数据目录
 RUN mkdir -p /app/.data
