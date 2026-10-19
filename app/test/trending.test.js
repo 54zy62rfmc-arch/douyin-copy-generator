@@ -38,28 +38,23 @@ test('addTrending：同组名覆盖，词量截断', () => {
 });
 
 test('hotwordGroups：过期热榜不注入，clearTrending 清空', () => {
-  store.flushAll(); // 先落盘并清掉防抖计时器，避免与下面手动写文件竞争
-  const file = path.join(TMP, 'hotwords.json');
-  fs.writeFileSync(
-    file,
-    JSON.stringify({
-      note: '',
-      updatedAt: Date.now(),
-      tags: { 泛流量: ['好物推荐'] },
-      trending: [
-        { group: '旧热点', words: ['过期词'], updatedAt: Date.now() - 10 * 86400000, expiresAt: Date.now() - 1000 },
-      ],
-    }),
-    'utf8'
-  );
-  delete require.cache[require.resolve('../lib/store')];
-  const store2 = require('../lib/store');
-  const groups = store2.hotwordGroups();
+  store.clearTrending();
+  store.addTrending([{ group: '旧热点', words: ['过期词'] }], 1);
+  // 直接把过期时间改到过去（SQLite 无缓存，改库即生效）
+  const { DatabaseSync } = require('node:sqlite');
+  const tdb = new DatabaseSync(store.DB_PATH);
+  const row = tdb.prepare("SELECT value FROM kv WHERE name = 'hotwords'").get();
+  const hw = JSON.parse(row.value);
+  hw.trending[0].expiresAt = Date.now() - 1000;
+  tdb.prepare("UPDATE kv SET value = ? WHERE name = 'hotwords'").run(JSON.stringify(hw));
+  tdb.close();
+
+  const groups = store.hotwordGroups();
   assert.ok(!groups.some((g) => g.group.includes('旧热点')), '过期组不应注入');
   assert.ok(groups.some((g) => g.group === '泛流量'), '手动词库仍注入');
 
-  store2.clearTrending();
-  assert.strictEqual(store2.getHotwords().trending.length, 0);
+  store.clearTrending();
+  assert.strictEqual(store.getHotwords().trending.length, 0);
 });
 
 test('setHotwords：保存手动词库时保留热榜区', () => {

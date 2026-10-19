@@ -6,10 +6,10 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test"
+    "start": "node --experimental-sqlite server.js",
+    "test": "node --experimental-sqlite --test"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.5"
   }
 }

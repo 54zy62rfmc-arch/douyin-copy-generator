@@ -1,89 +1,144 @@
 'use strict';
 /**
- * 轻量文件持久化（JSON，零依赖）
- * 存储：历史记录 / 热词库 / 爆款样本库 / 访问口令
- * 单租户设计，适合个人或小团队自托管。
+ * SQLite 持久化（node:sqlite，零三方依赖）
+ * 存储：历史记录（history 表）/ 热词库·样本库·访问口令（kv 表）
+ * 需要 Node ≥22.5 并以 --experimental-sqlite 启动。
+ * 首次启动时自动从旧 JSON 文件（.data/*.json）迁移，迁移后原文件改名为 .migrated 备份。
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { DatabaseSync } = require('node:sqlite');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '.data');
-const cache = new Map();
-const writeTimers = new Map();
+const DB_PATH = path.join(DATA_DIR, 'copygen.db');
 
-function ensureDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+let db = null;
+
+function getDb() {
+  if (db) return db;
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  const d = new DatabaseSync(DB_PATH);
+  d.exec('PRAGMA journal_mode = WAL');
+  d.exec(`
+    CREATE TABLE IF NOT EXISTS kv (
+      name  TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS history (
+      id        TEXT PRIMARY KEY,
+      createdAt INTEGER NOT NULL DEFAULT 0,
+      updatedAt INTEGER NOT NULL DEFAULT 0,
+      hookType  TEXT NOT NULL DEFAULT '',
+      data      TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_history_created ON history(createdAt DESC);
+  `);
+  db = d;
+  migrateFromJson(d);
+  return d;
 }
 
-function fileOf(name) {
-  return path.join(DATA_DIR, `${name}.json`);
+/* ---------------- JSON 迁移（一次性） ---------------- */
+function migrateFromJson(d) {
+  const files = ['history', 'hotwords', 'samples', 'auth'];
+  for (const name of files) {
+    const fp = path.join(DATA_DIR, `${name}.json`);
+    if (!fs.existsSync(fp)) continue;
+    try {
+      const val = JSON.parse(fs.readFileSync(fp, 'utf8'));
+      if (name === 'history' && Array.isArray(val)) {
+        const ins = d.prepare(
+          'INSERT OR IGNORE INTO history (id, createdAt, updatedAt, hookType, data) VALUES (?, ?, ?, ?, ?)'
+        );
+        for (const it of val) {
+          if (!it || !it.id) continue;
+          ins.run(
+            String(it.id),
+            Number(it.createdAt) || 0,
+            Number(it.updatedAt) || 0,
+            String(it.hookType || ''),
+            JSON.stringify(it)
+          );
+        }
+      } else {
+        d.prepare('INSERT OR IGNORE INTO kv (name, value) VALUES (?, ?)').run(name, JSON.stringify(val));
+      }
+      fs.renameSync(fp, fp + '.migrated');
+      console.log(`[store] 已迁移 ${name}.json → SQLite（原文件备份为 .migrated）`);
+    } catch (e) {
+      console.error(`[store] 迁移 ${name}.json 失败，保留原文件：`, e.message);
+    }
+  }
 }
 
+/* ---------------- kv 读写 ---------------- */
 function read(name, fallback) {
-  if (cache.has(name)) return cache.get(name);
-  ensureDir();
+  const row = getDb().prepare('SELECT value FROM kv WHERE name = ?').get(name);
+  if (!row) return fallback;
   try {
-    const raw = fs.readFileSync(fileOf(name), 'utf8');
-    const val = JSON.parse(raw);
-    cache.set(name, val);
-    return val;
+    return JSON.parse(row.value);
   } catch {
-    cache.set(name, fallback);
     return fallback;
   }
 }
 
 function write(name, val) {
-  cache.set(name, val);
-  clearTimeout(writeTimers.get(name));
-  writeTimers.set(
-    name,
-    setTimeout(() => {
-      ensureDir();
-      const tmp = fileOf(name) + '.tmp';
-      try {
-        fs.writeFileSync(tmp, JSON.stringify(val, null, 2), 'utf8');
-        fs.renameSync(tmp, fileOf(name));
-      } catch (e) {
-        console.error('[store] 写入失败', name, e.message);
-      }
-    }, 60)
-  );
+  getDb()
+    .prepare('INSERT INTO kv (name, value) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET value = excluded.value')
+    .run(name, JSON.stringify(val));
   return val;
 }
 
-function flushAll() {
-  for (const [name, val] of cache) {
-    clearTimeout(writeTimers.get(name));
-    try {
-      ensureDir();
-      fs.writeFileSync(fileOf(name), JSON.stringify(val, null, 2), 'utf8');
-    } catch {}
+/** 兼容旧 API：SQLite 写入即持久，无需防抖落盘 */
+function flushAll() {}
+
+/* ---------------- 历史记录 ---------------- */
+function rowToItem(row) {
+  try {
+    return JSON.parse(row.data);
+  } catch {
+    return null;
   }
 }
 
-/* ---------------- 历史记录 ---------------- */
 function getHistory() {
-  return read('history', []);
+  const rows = getDb().prepare('SELECT data FROM history ORDER BY createdAt DESC LIMIT 200').all();
+  return rows.map(rowToItem).filter(Boolean);
 }
 
 function upsertHistory(item) {
-  const list = getHistory().slice();
-  const idx = list.findIndex((x) => x.id === item.id);
-  const record = Object.assign({}, idx >= 0 ? list[idx] : {}, item, { updatedAt: Date.now() });
-  if (idx >= 0) list[idx] = record;
-  else list.unshift(record);
-  return write('history', list.slice(0, 200));
+  if (!item || !item.id) return getHistory();
+  const d = getDb();
+  const prevRow = d.prepare('SELECT data FROM history WHERE id = ?').get(String(item.id));
+  const prev = prevRow ? rowToItem(prevRow) : null;
+  const record = Object.assign({}, prev || {}, item, { updatedAt: Date.now() });
+  d.prepare(
+    'INSERT INTO history (id, createdAt, updatedAt, hookType, data) VALUES (?, ?, ?, ?, ?) ' +
+      'ON CONFLICT(id) DO UPDATE SET updatedAt = excluded.updatedAt, hookType = excluded.hookType, data = excluded.data'
+  ).run(
+    String(record.id),
+    Number.isFinite(Number(record.createdAt)) ? Number(record.createdAt) : Date.now(),
+    Number(record.updatedAt) || Date.now(),
+    String(record.hookType || ''),
+    JSON.stringify(record)
+  );
+  // 封顶 200 条，超出按创建时间最旧的删除
+  d.prepare(
+    'DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY createdAt DESC LIMIT 200)'
+  ).run();
+  return getHistory();
 }
 
 function deleteHistory(id) {
-  return write('history', getHistory().filter((x) => x.id !== id));
+  getDb().prepare('DELETE FROM history WHERE id = ?').run(String(id));
+  return getHistory();
 }
 
 function clearHistory() {
-  return write('history', []);
+  getDb().prepare('DELETE FROM history').run();
+  return [];
 }
 
 /* ---------------- 热词库 ---------------- */
@@ -306,4 +361,5 @@ module.exports = {
   verifyToken,
   flushAll,
   DATA_DIR,
+  DB_PATH,
 };
