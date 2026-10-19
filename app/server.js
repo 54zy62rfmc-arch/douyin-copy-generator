@@ -48,7 +48,7 @@ function loadEnvFile() {
 }
 loadEnvFile();
 
-process.env.__BUILD = 'build-20261019-4';
+process.env.__BUILD = 'build-20261019-5';
 
 // Railway Raw Editor 中带引号的值会把引号包含进 process.env，这里统一去除首尾引号
 for (const key of Object.keys(process.env)) {
@@ -376,10 +376,21 @@ async function handleExtract(req, res) {
   } catch (e) {
     return sendJson(res, 400, { error: e.message });
   }
-  const url = String(payload.url || '').trim();
-  if (!url) return sendJson(res, 400, { error: '请填写商品链接' });
+  const raw = String(payload.url || '').trim();
+  if (!raw) return sendJson(res, 400, { error: '请填写商品链接' });
 
   const cfg = resolveConfig(req);
+
+  // 粘贴的可能是抖音分享口令等纯文本（不含网址），此时直接按文本提炼而不是报错
+  const urlMatch = raw.match(/https?:\/\/[^\s"'【】，,、（）()]+/i);
+  if (!urlMatch) {
+    if (raw.length < 8) {
+      return sendJson(res, 200, { ok: false, message: '请粘贴商品链接，或在下方「粘贴提炼」中粘贴商品标题与卖点' });
+    }
+    return sendJson(res, 200, await parseTextStructured(raw, cfg));
+  }
+  const url = urlMatch[0];
+
   try {
     const res1 = await httpRequest({
       url,
@@ -691,6 +702,23 @@ function normalizeExtractInfo(json) {
   };
 }
 
+/** 文本结构化提炼：优先大模型，失败退回规则解析 */
+async function parseTextStructured(text, cfg) {
+  const fallback = () => ({ ok: true, mode: 'rule', info: heuristicParseText(text), fallback: true });
+  if (!cfg.apiKey) return fallback();
+  try {
+    const out = await collect(
+      streamSmart(llmOpts(cfg, buildParseMessages(text), { temperature: 0.2, maxTokens: 700 }))
+    );
+    const json = extractJson(out);
+    if (!json) return fallback();
+    return { ok: true, mode: 'llm', info: normalizeExtractInfo(json) };
+  } catch {
+    // 模型失败时退回规则提炼，保证功能可用
+    return fallback();
+  }
+}
+
 async function handleParseText(req, res) {
   let payload;
   try {
@@ -702,22 +730,7 @@ async function handleParseText(req, res) {
   if (!text) return sendJson(res, 400, { error: '请先粘贴商品标题与卖点原文' });
   if (text.length < 8) return sendJson(res, 200, { ok: false, message: '内容太短，请粘贴完整的商品标题与卖点' });
 
-  const cfg = resolveConfig(req);
-  const fallback = () =>
-    sendJson(res, 200, { ok: true, mode: 'rule', info: heuristicParseText(text), fallback: true });
-
-  if (!cfg.apiKey) return fallback();
-  try {
-    const out = await collect(
-      streamSmart(llmOpts(cfg, buildParseMessages(text), { temperature: 0.2, maxTokens: 700 }))
-    );
-    const json = extractJson(out);
-    if (!json) return fallback();
-    return sendJson(res, 200, { ok: true, mode: 'llm', info: normalizeExtractInfo(json) });
-  } catch {
-    // 模型失败时退回规则提炼，保证功能可用
-    return fallback();
-  }
+  return sendJson(res, 200, await parseTextStructured(text, resolveConfig(req)));
 }
 
 /* ---------- 热榜粘贴提炼入库 ---------- */
