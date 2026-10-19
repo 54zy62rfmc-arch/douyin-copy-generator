@@ -1051,6 +1051,9 @@ function renderAnalysis(data) {
     return;
   }
 
+  const lowTotal = data.sampleCount < 5; // 总样本不足，结论仅供参考
+  const LOW = 3; // 单组样本下限
+
   const winnersHtml = (data.winners || [])
     .map(
       (w) => `<div class="ab-win">
@@ -1060,35 +1063,40 @@ function renderAnalysis(data) {
         w.avgRetention != null ? `完播 ${w.avgRetention}%` : '',
         w.avgCvr != null ? `转化 ${w.avgCvr}%` : '',
         w.gpm ? `千次播放 ${fmtNum(w.gpm)} 元` : '',
-      ].filter(Boolean).join(' · ') || '综合表现最好'}（${w.count} 条）</div>
+      ].filter(Boolean).join(' · ') || '综合表现最好'}（${w.count} 条${w.count < LOW ? '·样本少' : ''}）</div>
     </div>`
     )
     .join('');
 
   const dimsHtml = (data.dimensions || [])
-    .map(
-      (d) => `<section class="card ab-dim">
+    .map((d) => {
+      const hasLow = (d.groups || []).some((g) => g.count < LOW);
+      return `<section class="card ab-dim">
       <h2 class="card-title"><span class="dot"></span>按${escapeHtml(d.label)}</h2>
       <table class="ab-table">
         <thead><tr><th>${escapeHtml(d.label)}</th><th>样本</th><th>播放</th><th>完播率</th><th>转化率</th><th>千次GMV</th><th>综合分</th></tr></thead>
         <tbody>
           ${d.groups
             .map(
-              (g, i) => `<tr class="${i === 0 ? 'ab-best' : ''}"><td>${escapeHtml(g.value)}</td><td>${g.count}</td><td>${fmtNum(g.views)}</td><td>${
+              (g, i) => `<tr class="${i === 0 ? 'ab-best' : ''}${g.count < LOW ? ' ab-low' : ''}"><td>${escapeHtml(g.value)}</td><td>${g.count}${
+                g.count < LOW ? '※' : ''
+              }</td><td>${fmtNum(g.views)}</td><td>${
                 g.avgRetention != null ? g.avgRetention + '%' : '—'
               }</td><td>${g.avgCvr != null ? g.avgCvr + '%' : '—'}</td><td>${g.gpm ? fmtNum(g.gpm) : '—'}</td><td>${g.score}</td></tr>`
             )
             .join('')}
         </tbody>
       </table>
-    </section>`
-    )
+      ${hasLow ? '<p class="hint" style="margin:8px 0 0">※ 样本少于 3 条，数据仅供参考</p>' : ''}
+    </section>`;
+    })
     .join('');
 
   box.innerHTML = `
     <section class="card ab-advice">
       <h2 class="card-title"><span class="dot"></span>最优打法 <em class="ct-opt">${data.sampleCount} 条投放数据</em></h2>
       ${winnersHtml}
+      ${lowTotal ? `<p class="hint" style="margin:10px 0 0">※ 当前共 ${data.sampleCount} 条投放数据，样本较少，结论仅供参考；累计 5 条以上更可靠。</p>` : ''}
       <p class="hint">下次生成时，这些已验证的打法会自动注入提示词（累计 3 条数据生效）。</p>
     </section>
     ${dimsHtml}`;

@@ -703,6 +703,7 @@ mark.risk.risk-low { background: rgba(127, 142, 163, 0.18); border-bottom: 2px d
 }
 .ab-table th { background: var(--card-2); color: var(--text); font-weight: 700; }
 .ab-table tr.ab-best td { color: var(--ok); font-weight: 600; background: rgba(61, 220, 132, 0.06); }
+.ab-table tr.ab-low td { color: var(--dim); font-weight: 400; background: transparent; }
 .ab-dim .card-title { margin-bottom: 10px; }
 
 /* ============ 新增：选品导入弹层 ============ */
