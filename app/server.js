@@ -818,6 +818,18 @@ function getLan() {
     .map((n) => n.address);
 }
 
+function handleDebugEnv(req, res) {
+  const keys = Object.keys(process.env).filter((k) =>
+    /^(LLM_|API_KEY|ACCESS_TOKEN|PORT|DATA_DIR)/i.test(k)
+  );
+  const out = {};
+  for (const k of keys) {
+    const v = process.env[k] || '';
+    out[k] = v.length > 8 ? v.slice(0, 4) + '***' + v.slice(-4) : '(empty)';
+  }
+  sendJson(res, 200, out);
+}
+
 function handleConfig(req, res) {
   const cfg = resolveConfig(req);
   const configured = Boolean(cfg.apiKey);
@@ -908,6 +920,7 @@ const server = (() => {
     res.setHeader('Access-Control-Allow-Origin', '*');
 
     if (!url.startsWith('/api/')) return serveStatic(req, res);
+    if (url === '/api/debug-env' && req.method === 'GET') return handleDebugEnv(req, res);
     if (url === '/api/config' && req.method === 'GET') return handleConfig(req, res);
     if (url === '/api/auth-check') return handleAuthCheck(req, res);
 
