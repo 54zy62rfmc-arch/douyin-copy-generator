@@ -127,7 +127,7 @@ function serveStatic(req, res) {
 
 /* ---------- 大模型配置 ---------- */
 function resolveConfig(req) {
-  const apiKey = (req.headers['x-llm-key'] || process.env.LLM_API_KEY || '').trim();
+  const apiKey = (req.headers['x-llm-key'] || process.env.LLM_API_KEY || process.env.LLM_API_KE || '').trim();
   const baseUrl = (req.headers['x-llm-base'] || DEFAULT_BASE).trim();
   const models = String(req.headers['x-llm-model'] || process.env.LLM_MODELS || DEFAULT_MODEL)
     .split(',')
