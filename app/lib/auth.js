@@ -9,6 +9,14 @@ const store = require('./store');
 const WINDOW_MS = 60 * 1000;
 const buckets = new Map();
 
+/** 去除首尾可能的引号（Railway Raw Editor 会把引号包含进值） */
+function stripQuotes(s) {
+  if (typeof s !== 'string') return s;
+  if (s.length >= 2 && s[0] === '"' && s[s.length - 1] === '"') return s.slice(1, -1);
+  if (s.length >= 2 && s[0] === "'" && s[s.length - 1] === "'") return s.slice(1, -1);
+  return s;
+}
+
 function clientIp(req) {
   const fwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
   return fwd || req.socket?.remoteAddress || 'unknown';
@@ -18,7 +26,7 @@ function clientIp(req) {
 function guard(req, { rateLimit = 60, needAuth = true } = {}) {
   // 1. 鉴权
   if (needAuth) {
-    const envToken = (process.env.ACCESS_TOKEN || '').trim();
+    const envToken = stripQuotes((process.env.ACCESS_TOKEN || '').trim());
     const tokenFromHeader = String(req.headers['x-access-token'] || '').trim();
     const tokenFromQuery = String(new URL(req.url, 'http://x').searchParams.get('token') || '').trim();
     const token = tokenFromHeader || tokenFromQuery;
