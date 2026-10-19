@@ -17,7 +17,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
-const { buildMessages, buildRewriteMessages, buildExtractMessages, buildParseMessages, buildTrendingMessages, buildComplianceMessages, buildVisionMessages, SCENE_LABEL, pickAngles } = require('./lib/prompts');
+const { buildMessages, buildRewriteMessages, buildExtractMessages, buildParseMessages, buildTrendingMessages, buildComplianceMessages, buildVisionMessages, buildVisionMetricsMessages, SCENE_LABEL, pickAngles } = require('./lib/prompts');
 const { streamSmart, collect, extractJson } = require('./lib/llm');
 const { buildDemo, rewriteSection, VARIANT_SCENES, DEMO_NOTE } = require('./lib/demo');
 const { scan, groupByCategory, safeRewrite } = require('./lib/compliance');
@@ -420,6 +420,19 @@ async function handleExtract(req, res) {
 }
 
 /* ---------- /api/vision ---------- */
+/* 数字规整：兼容 "1.2万" / "45.6%" 等中文数据截图常见写法 */
+function numCn(v) {
+  if (typeof v === 'string') {
+    const t = v.trim().replace(/[%元,\s]/g, '');
+    const w = /^([\d.]+)万$/.exec(t);
+    if (w) return Math.round(parseFloat(w[1]) * 10000 * 100) / 100;
+    const n = parseFloat(t);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 async function handleVision(req, res) {
   let payload;
   try {
@@ -428,8 +441,9 @@ async function handleVision(req, res) {
     return sendJson(res, 400, { error: e.message });
   }
   const cfg = resolveConfig(req);
+  const isMetrics = String(payload.mode || '') === 'metrics';
   if (!cfg.apiKey) {
-    return sendJson(res, 200, { ok: false, message: '主图识图需要配置大模型 API Key（且模型需支持视觉输入）' });
+    return sendJson(res, 200, { ok: false, message: '识图需要配置大模型 API Key（且模型需支持视觉输入）' });
   }
   let dataUrl = String(payload.image || '').trim();
   if (!dataUrl) return sendJson(res, 400, { error: '缺少图片数据' });
@@ -439,12 +453,20 @@ async function handleVision(req, res) {
   try {
     const out = await collect(
       streamSmart({
-        ...llmOpts(cfg, buildVisionMessages(dataUrl, payload.hint || ''), { temperature: 0.3, maxTokens: 700 }),
+        ...llmOpts(cfg, isMetrics ? buildVisionMetricsMessages(dataUrl) : buildVisionMessages(dataUrl, payload.hint || ''), {
+          temperature: isMetrics ? 0.1 : 0.3,
+          maxTokens: 700,
+        }),
         models: [cfg.visionModel],
       })
     );
     const json = extractJson(out);
     if (!json) return sendJson(res, 200, { ok: false, message: '模型没有返回可解析的结果，请确认所用模型支持图片输入' });
+    if (isMetrics) {
+      const metrics = {};
+      for (const k of ['views', 'retention', 'cvr', 'gmv']) metrics[k] = numCn(json[k]);
+      return sendJson(res, 200, { ok: true, mode: 'llm', metrics });
+    }
     return sendJson(res, 200, {
       ok: true,
       mode: 'llm',

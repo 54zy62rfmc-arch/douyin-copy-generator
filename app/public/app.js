@@ -876,8 +876,46 @@ function metricsPanelHtml(id, m) {
       <label class="field"><span class="label">成交额 GMV</span><input type="number" min="0" step="0.01" data-mp="gmv" value="${v('gmv')}" placeholder="如 850" /></label>
     </div>
     <p class="hint">数据只存在本机（开云同步则存服务端）。累计 3 条后，生成时会自动反哺最优打法。</p>
+    <div class="m-ocr-row">
+      <button class="tool-btn" data-mocr="${id}" type="button">截图识别</button>
+      <input type="file" accept="image/*" class="hidden" data-mfile="${id}" />
+      <span class="hint">传抖音数据截图自动填数，识别后请核对再保存</span>
+    </div>
     <div class="btn-row" style="margin-top:8px"><button class="btn btn-primary" data-msave="${id}" type="button">保存投放数据</button></div>
   </div>`;
+}
+
+/* 投放数据截图识别（走服务端多模态模型） */
+async function doMetricsOcr(id, file) {
+  if (!file) return;
+  try {
+    const dataUrl = await fileToDataUrl(file, 1280, 0.85);
+    toast('正在识别截图…');
+    const res = await fetch('/api/vision', {
+      method: 'POST',
+      headers: llmHeaders(),
+      body: JSON.stringify({ image: dataUrl, mode: 'metrics' }),
+    });
+    if (handleUnauthorized(res)) return;
+    const j = await res.json();
+    if (!j.ok) return toast(j.message || '识别失败，请手动填写');
+    const panel = $(`.m-panel[data-mpanel="${id}"]`);
+    if (!panel) return;
+    const m = j.metrics || {};
+    let n = 0;
+    for (const k of ['views', 'retention', 'cvr', 'gmv']) {
+      if (m[k] > 0) {
+        const inp = panel.querySelector(`[data-mp="${k}"]`);
+        if (inp) {
+          inp.value = m[k];
+          n++;
+        }
+      }
+    }
+    toast(n ? `已识别 ${n} 项，请核对后保存` : '截图里没认出数据，请手动填写');
+  } catch (err) {
+    toast('识别失败：' + (err.message || '未知错误'));
+  }
 }
 
 function saveHistory(session) {
@@ -1894,6 +1932,12 @@ function init() {
       setRating(rate.dataset.rate, rate.dataset.rateVal);
       return;
     }
+    const mocr = e.target.closest('[data-mocr]');
+    if (mocr) {
+      const inp = $(`[data-mfile="${mocr.dataset.mocr}"]`);
+      if (inp) inp.click();
+      return;
+    }
     const msave = e.target.closest('[data-msave]');
     if (msave) {
       saveMetrics(msave.dataset.msave);
@@ -1922,6 +1966,10 @@ function init() {
   $('#histSearch').addEventListener('input', (e) => {
     state.histQuery = e.target.value;
     renderHistory();
+  });
+  $('#historyList').addEventListener('change', (e) => {
+    const f = e.target.closest('[data-mfile]');
+    if (f && f.files && f.files[0]) doMetricsOcr(f.dataset.mfile, f.files[0]);
   });
   $('#btnAbRefresh').addEventListener('click', () => loadAnalysis());
   $('#cloudSync').addEventListener('change', (e) => {

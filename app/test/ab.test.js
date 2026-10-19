@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const ab = require('../lib/ab');
 const { heuristicParseText } = require('../lib/extract');
-const { insightBlock, buildUserPrompt } = require('../lib/prompts');
+const { insightBlock, buildUserPrompt, buildVisionMetricsMessages } = require('../lib/prompts');
 
 test('extractHookType：提取主选钩子的策略标注', () => {
   const text = '## 黄金3秒钩子\n主选：别再乱买了。（反常识）\n备选1：xxx（悬念）';
@@ -113,6 +113,16 @@ test('analyze：人工评分维度分组；insightBlock 不注入评分维度', 
   assert.strictEqual(dim.groups[0].value, '好'); // 好 的数据表现更优排前
   const block = insightBlock({ sampleCount: out.sampleCount, winners: out.winners });
   assert.ok(!block.includes('人工评分'));
+});
+
+test('buildVisionMetricsMessages：投放数据截图提示词结构', () => {
+  const msgs = buildVisionMetricsMessages('data:image/jpeg;base64,xx');
+  assert.strictEqual(msgs.length, 2);
+  const content = msgs[1].content;
+  assert.ok(Array.isArray(content));
+  assert.strictEqual(content[1].type, 'image_url');
+  assert.ok(content[0].text.includes('"views"'));
+  assert.ok(content[0].text.includes('万'));
 });
 
 test('insightBlock：生成反哺提示词块', () => {

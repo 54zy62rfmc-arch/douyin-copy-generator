@@ -733,6 +733,10 @@ mark.risk.risk-low { background: rgba(127, 142, 163, 0.18); border-bottom: 2px d
 .hist-filter .seg button { flex: 1 1 0; }
 .hist-count { margin: 6px 2px 0; font-size: 11px; }
 
+/* 投放面板：截图识别 */
+.m-ocr-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.m-ocr-row .hint { flex: 1 1 auto; font-size: 11px; }
+
 /* ============ 新增：选品导入弹层 ============ */
 .op-mask {
   position: fixed; inset: 0; z-index: 60;

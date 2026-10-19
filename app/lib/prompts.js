@@ -439,6 +439,34 @@ category 必须从这几个里选：美妆护肤/食品生鲜/服饰鞋包/家�
   ];
 }
 
+/** 投放数据截图识别：从抖音数据页截图读取 播放量/完播率/转化率/GMV */
+function buildVisionMetricsMessages(imageDataUrl) {
+  return [
+    {
+      role: 'system',
+      content: `你是抖音电商数据截图识别助手。从截图读取视频投放数据，只输出 JSON。
+严禁编造截图中看不到的数字：看不到的字段填 0。`,
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: `这是抖音视频的数据截图（可能来自创作者服务中心 / 巨量千川 / 电商罗盘）。请识别并输出 JSON：
+{"views": 0, "retention": 0, "cvr": 0, "gmv": 0}
+规则：
+- views 播放量、gmv 成交额：纯数字，"1.2万" → 12000
+- retention 完播率、cvr 转化率：只填百分数的数值部分（"45.6%" → 45.6）
+- 只输出 JSON 本身，不要多余文字
+- 截图里看不到的字段填 0
+- 若有多条视频的数据，取最新一条`,
+        },
+        { type: 'image_url', image_url: { url: imageDataUrl } },
+      ],
+    },
+  ];
+}
+
 module.exports = {
   SYSTEM_PROMPT,
   DURATION_HINT,
@@ -455,6 +483,7 @@ module.exports = {
   buildTrendingMessages,
   buildComplianceMessages,
   buildVisionMessages,
+  buildVisionMetricsMessages,
   insightBlock,
   EXTRACT_SCHEMA,
 };
