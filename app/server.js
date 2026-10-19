@@ -48,6 +48,14 @@ function loadEnvFile() {
 }
 loadEnvFile();
 
+// Railway Raw Editor 中带引号的值会把引号包含进 process.env，这里统一去除首尾引号
+for (const key of Object.keys(process.env)) {
+  const v = process.env[key];
+  if (typeof v === 'string' && v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') {
+    process.env[key] = v.slice(1, -1);
+  }
+}
+
 const PORT = Number(process.env.PORT || 8000);
 const DEFAULT_BASE = process.env.LLM_BASE_URL || 'https://api.openai.com/v1';
 const DEFAULT_MODEL = process.env.LLM_MODEL || 'gpt-4o-mini';
