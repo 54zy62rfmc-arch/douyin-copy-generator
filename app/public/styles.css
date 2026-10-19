@@ -278,6 +278,7 @@ select.sel:focus { border-color: var(--pink); }
 }
 .hint.ok { color: var(--ok); }
 .hint.err { color: var(--pink-2); }
+.hint.warn { color: #d9a13c; }
 
 .foot-tip {
   font-size: 11.5px;

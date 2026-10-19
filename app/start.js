@@ -12,6 +12,7 @@ const { spawn, exec } = require('node:child_process');
 const PORT = process.env.PORT || 8000;
 const URL_OPEN = `http://127.0.0.1:${PORT}`;
 const APP_DIR = __dirname;
+const AUTOSTART = process.env.AUTOSTART === '1'; // 开机自启：只起服务，不弹浏览器
 
 function ping() {
   return new Promise((resolve) => {
@@ -43,8 +44,8 @@ function openBrowser() {
 
 (async () => {
   if (await ping()) {
-    console.log('[启动器] 服务已在运行，直接打开页面');
-    openBrowser();
+    console.log('[启动器] 服务已在运行' + (AUTOSTART ? '' : '，直接打开页面'));
+    if (!AUTOSTART) openBrowser();
     return;
   }
   console.log('[启动器] 正在启动服务…');
@@ -59,8 +60,8 @@ function openBrowser() {
 
   const ok = await waitReady();
   if (ok) {
-    console.log('[启动器] 服务已就绪，打开页面');
-    openBrowser();
+    console.log('[启动器] 服务已就绪' + (AUTOSTART ? '（开机自启，不打开页面）' : '，打开页面'));
+    if (!AUTOSTART) openBrowser();
   } else {
     console.error('[启动器] 服务启动超时，请检查 8000 端口是否被占用');
     process.exitCode = 1;

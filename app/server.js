@@ -794,6 +794,13 @@ async function handleSamples(req, res) {
 }
 
 /* ---------- 配置与鉴权 ---------- */
+function getLan() {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter((n) => n && n.family === 'IPv4' && !n.internal)
+    .map((n) => n.address);
+}
+
 function handleConfig(req, res) {
   const cfg = resolveConfig(req);
   const configured = Boolean(cfg.apiKey);
@@ -805,6 +812,7 @@ function handleConfig(req, res) {
     models: configured ? cfg.models : [],
     visionModel: configured ? cfg.visionModel : '',
     authRequired: auth.authRequired(),
+    lan: getLan(),
     variantScenes: VARIANT_SCENES,
     demoNote: DEMO_NOTE.trim(),
     encrypt: false,
@@ -922,10 +930,7 @@ const server = (() => {
 auth.startCleanup();
 
 server.listen(PORT, () => {
-  const lan = Object.values(os.networkInterfaces())
-    .flat()
-    .filter((n) => n && n.family === 'IPv4' && !n.internal)
-    .map((n) => n.address);
+  const lan = getLan();
   const cfg = resolveConfig({ headers: {} });
   console.log('\n  抖音带货爆款文案生成器已启动');
   console.log(`  本机访问:    http://localhost:${PORT}`);

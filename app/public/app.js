@@ -1685,9 +1685,17 @@ async function refreshModeBadge() {
       badge.classList.remove('live');
       $('#brandStatus').textContent = '未配置 Key · 模板体验模式';
     }
-    $('#tokenHint').textContent = cfg.authRequired
-      ? '已启用：接口需带口令访问。'
-      : '未启用：接口无需口令。可在下方设置。';
+    const tokenHint = $('#tokenHint');
+    if (cfg.authRequired) {
+      tokenHint.textContent = '已启用：接口需带口令访问。';
+      tokenHint.className = 'hint ok';
+    } else if (cfg.lan && cfg.lan.length) {
+      tokenHint.textContent = `提醒：局域网已开放（http://${cfg.lan[0]}:8000），当前未设访问口令，同网设备可直接访问，建议设置口令。`;
+      tokenHint.className = 'hint warn';
+    } else {
+      tokenHint.textContent = '未启用：接口无需口令。可在下方设置。';
+      tokenHint.className = 'hint';
+    }
     if (cfg.demo && !$('#cfgResult').textContent) $('#cfgResult').textContent = cfg.demoNote || '';
   } catch {
     $('#brandStatus').textContent = '服务未连接';
