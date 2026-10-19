@@ -622,7 +622,10 @@ async function handleAbAnalysis(req, res) {
   }
   // 合并服务端历史与本地传入的投放数据（同 id 以本地为准，未开云同步也能分析）
   const items = ab.mergeItems(store.getHistory(), Array.isArray(payload.items) ? payload.items : []);
-  sendJson(res, 200, ab.analyze(items));
+  // 时间切片：days>0 时只统计最近 N 天录入的数据
+  const days = Math.max(0, Number(payload.days) || 0);
+  const since = days ? Date.now() - days * 86400000 : 0;
+  sendJson(res, 200, ab.analyze(items, { since }));
 }
 
 /* ---------- /api/parse-text：粘贴文本一键结构化 ---------- */

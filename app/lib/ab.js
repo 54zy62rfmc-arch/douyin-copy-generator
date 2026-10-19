@@ -25,7 +25,7 @@ function num(v) {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-/** 校验并规范化投放数据；全空返回 null（视为未录入） */
+/** 校验并规范化投放数据；全空返回 null（视为未录入）。at 为录入时间戳（可选，用于时间切片） */
 function validMetrics(m) {
   if (!m || typeof m !== 'object') return null;
   const views = num(m.views);
@@ -33,7 +33,8 @@ function validMetrics(m) {
   const cvr = num(m.cvr);
   const gmv = num(m.gmv);
   if (!views && !retention && !cvr && !gmv) return null;
-  return { views, retention, cvr, gmv };
+  const at = num(m.at);
+  return { views, retention, cvr, gmv, ...(at ? { at } : {}) };
 }
 
 /** 合并服务端与本地历史（同 id 时以本地为准，保证未开云同步也能分析） */
@@ -61,6 +62,7 @@ function collectRecords(items) {
       retention: m.retention,
       cvr: m.cvr,
       gmv: m.gmv,
+      at: m.at || num(it.ts), // 录入时间优先，旧数据回退生成时间
       hookType: String(it.hookType || extractHookType(it.results?.talk) || '').trim(),
       tone: String(it.form?.tone || '').trim(),
       persona: String(it.form?.persona || '').trim(),
@@ -124,9 +126,11 @@ function groupStats(records, key) {
   return arr;
 }
 
-/** 主分析入口：返回 { sampleCount, dimensions, winners } */
-function analyze(items) {
-  const records = collectRecords(items);
+/** 主分析入口：返回 { sampleCount, dimensions, winners }；opts.since 只统计录入时间不早于该时间戳的记录 */
+function analyze(items, opts = {}) {
+  let records = collectRecords(items);
+  const since = Number(opts.since) || 0;
+  if (since > 0) records = records.filter((r) => (r.at || 0) >= since);
   const dimensions = DIMENSIONS.map(({ key, label }) => ({
     key,
     label,

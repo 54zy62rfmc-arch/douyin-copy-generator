@@ -80,6 +80,26 @@ test('analyze：只有播放量时按播放量兜底排序', () => {
   assert.strictEqual(tone.groups[0].value, '专业测评'); // 播放最多
 });
 
+test('analyze：since 时间切片只统计新记录，at 缺失回退 item.ts', () => {
+  const now = Date.now();
+  const items = [
+    { id: '1', form: { tone: '幽默' }, metrics: { views: 5000, at: now - 2 * 86400000 } }, // 2 天前录入
+    { id: '2', form: { tone: '专业测评' }, metrics: { views: 50000, at: now - 20 * 86400000 } }, // 20 天前录入
+    { id: '3', form: { tone: '反差' }, ts: now - 10 * 86400000, metrics: { views: 9000 } }, // 无 at，回退 ts
+  ];
+  const all = ab.analyze(items);
+  assert.strictEqual(all.sampleCount, 3);
+  const week = ab.analyze(items, { since: now - 7 * 86400000 });
+  assert.strictEqual(week.sampleCount, 1); // 只剩 2 天前录入的那条
+  assert.strictEqual(week.dimensions.find((d) => d.key === 'tone').groups[0].value, '幽默');
+});
+
+test('validMetrics：保留录入时间戳 at', () => {
+  const m = ab.validMetrics({ views: 100, at: 1729000000000 });
+  assert.strictEqual(m.at, 1729000000000);
+  assert.strictEqual(ab.validMetrics({ views: 100 }).at, undefined);
+});
+
 test('insightBlock：生成反哺提示词块', () => {
   const out = ab.analyze([
     { id: '1', form: { tone: '幽默' }, hookType: '反常识', metrics: { views: 10000, retention: 45, cvr: 2, gmv: 800 } },

@@ -116,6 +116,7 @@ const state = {
   rw: null,
   rwCtrl: null,
   abInfo: {},
+  abRange: 0, // 分析时间切片：0 全部 / 7 / 30 天
   metricsOpen: null,
   fixing: {},
 };
@@ -981,6 +982,7 @@ async function saveMetrics(id) {
     metrics[k] = n;
   }
   if (!Object.keys(metrics).length) return toast('请至少填写一项投放数据');
+  metrics.at = Date.now(); // 录入时间戳，用于时间切片
 
   const list = localHistory();
   const idx = list.findIndex((x) => x.id === id);
@@ -1007,7 +1009,7 @@ async function saveMetrics(id) {
 function slimHistory() {
   return localHistory()
     .filter((x) => x.metrics)
-    .map(({ id, name, form, metrics, hookType }) => ({ id, name, form, metrics, hookType }));
+    .map(({ id, name, form, metrics, hookType, ts }) => ({ id, name, form, metrics, hookType, ts }));
 }
 
 /* 启动时把本机积累的投放数据一次性合并到服务端，避免本地/服务端双轨分叉 */
@@ -1034,7 +1036,7 @@ async function loadAnalysis() {
     const res = await fetch('/api/ab-analysis', {
       method: 'POST',
       headers: llmHeaders(),
-      body: JSON.stringify({ items: slimHistory() }),
+      body: JSON.stringify({ items: slimHistory(), days: state.abRange }),
     });
     if (handleUnauthorized(res)) return;
     const data = await res.json();
@@ -1047,7 +1049,10 @@ async function loadAnalysis() {
 function renderAnalysis(data) {
   const box = $('#abBody');
   if (!data.sampleCount) {
-    box.innerHTML = `<section class="card"><div class="empty">还没有带投放数据的记录<br><br>先去「生成」页产出文案，投放后在「历史」里点「录投放数据」<br>填播放量 / 完播率 / 转化率 / GMV，累计 3 条即可生成打法分析</div></section>`;
+    const emptyMsg = state.abRange
+      ? `近 ${state.abRange} 天还没有带投放数据的记录<br><br>可切到「全部」查看，或先到「历史」录投放数据`
+      : `还没有带投放数据的记录<br><br>先去「生成」页产出文案，投放后在「历史」里点「录投放数据」<br>填播放量 / 完播率 / 转化率 / GMV，累计 3 条即可生成打法分析`;
+    box.innerHTML = `<section class="card"><div class="empty">${emptyMsg}</div></section>`;
     return;
   }
 
@@ -1645,6 +1650,10 @@ function bindSegments() {
       $$('button', box).forEach((b) => b.classList.remove('on'));
       btn.classList.add('on');
       if (field === 'scene') setScene(btn.dataset.val);
+      if (field === 'abRange') {
+        state.abRange = Number(btn.dataset.val) || 0;
+        loadAnalysis();
+      }
       persistFormDebounced();
     });
   });
