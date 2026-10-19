@@ -172,6 +172,17 @@
         <button class="link-btn" id="btnClearHistory" type="button">清空</button>
       </div>
     </div>
+    <div class="hist-filter">
+      <input id="histSearch" type="search" placeholder="搜索名称 / 品类 / 风格 / 钩子 / 文案关键词" autocomplete="off" />
+      <div class="seg seg-sm" data-field="histRating">
+        <button type="button" data-val="" class="on">全部</button>
+        <button type="button" data-val="好">好</button>
+        <button type="button" data-val="一般">一般</button>
+        <button type="button" data-val="差">差</button>
+        <button type="button" data-val="未">未打分</button>
+      </div>
+      <p class="hint hist-count" id="histCount"></p>
+    </div>
     <div id="historyList"></div>
   </main>
 

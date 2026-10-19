@@ -113,6 +113,8 @@ const state = {
   cloudSync: false,
   editing: false,
   historyList: null,
+  histQuery: '',
+  histRating: '',
   rw: null,
   rwCtrl: null,
   abInfo: {},
@@ -922,11 +924,28 @@ async function renderHistory() {
   }
   state.historyList = list;
 
-  if (!list.length) {
-    box.innerHTML = `<div class="empty">还没有生成记录<br>去「生成」页写一条爆款文案吧</div>`;
+  // 关键词 + 评分筛选
+  const q = state.histQuery.trim().toLowerCase();
+  const fr = state.histRating;
+  const filtered = list.filter((it) => {
+    if (fr === '未' ? Boolean(it.rating) : fr && it.rating !== fr) return false;
+    if (!q) return true;
+    const hay = [it.name, it.form?.productName, it.form?.category, it.form?.tone, it.form?.persona, it.hookType, it.results?.talk, it.results?.title]
+      .filter(Boolean)
+      .join('\n')
+      .toLowerCase();
+    return hay.includes(q);
+  });
+  const cnt = $('#histCount');
+  if (cnt) cnt.textContent = q || fr ? `筛选出 ${filtered.length} / ${list.length} 条` : list.length ? `共 ${list.length} 条` : '';
+
+  if (!filtered.length) {
+    box.innerHTML = list.length
+      ? `<div class="empty">没有匹配的记录<br>换个关键词或筛选条件试试</div>`
+      : `<div class="empty">还没有生成记录<br>去「生成」页写一条爆款文案吧</div>`;
     return;
   }
-  box.innerHTML = list
+  box.innerHTML = filtered
     .map((it) => {
       const tags = SCENES.filter((s) => it.results?.[s]?.trim())
         .map((s) => `<span class="hist-tag">${SCENE_LABEL[s]}</span>`)
@@ -1675,6 +1694,10 @@ function bindSegments() {
         state.abRange = Number(btn.dataset.val) || 0;
         loadAnalysis();
       }
+      if (field === 'histRating') {
+        state.histRating = btn.dataset.val;
+        renderHistory();
+      }
       persistFormDebounced();
     });
   });
@@ -1896,6 +1919,10 @@ function init() {
     toast('已清空历史');
   });
   $('#btnHistoryRefresh').addEventListener('click', () => renderHistory());
+  $('#histSearch').addEventListener('input', (e) => {
+    state.histQuery = e.target.value;
+    renderHistory();
+  });
   $('#btnAbRefresh').addEventListener('click', () => loadAnalysis());
   $('#cloudSync').addEventListener('change', (e) => {
     state.cloudSync = e.target.checked;

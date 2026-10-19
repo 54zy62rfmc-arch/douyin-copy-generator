@@ -715,6 +715,24 @@ mark.risk.risk-low { background: rgba(127, 142, 163, 0.18); border-bottom: 2px d
 }
 .rate-btn.on { color: var(--pink-2); border-color: var(--pink); background: rgba(254, 44, 85, 0.12); }
 
+/* 历史页：搜索与筛选 */
+.hist-filter { margin-bottom: 12px; }
+.hist-filter input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  outline: none;
+}
+.hist-filter input:focus { border-color: var(--pink); }
+.hist-filter .seg { width: 100%; }
+.hist-filter .seg button { flex: 1 1 0; }
+.hist-count { margin: 6px 2px 0; font-size: 11px; }
+
 /* ============ 新增：选品导入弹层 ============ */
 .op-mask {
   position: fixed; inset: 0; z-index: 60;
