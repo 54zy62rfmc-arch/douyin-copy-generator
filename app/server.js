@@ -807,6 +807,25 @@ function handleAuthCheck(req, res) {
   sendJson(res, 200, { ok: !blocked, message: blocked ? blocked.message : '通过' });
 }
 
+/* ---------- /api/backup：POST 创建备份，GET 下载最新备份 ---------- */
+function handleBackup(req, res) {
+  if (req.method === 'POST') {
+    try {
+      const r = store.backupDb();
+      return sendJson(res, 200, { ok: true, file: r.file });
+    } catch (e) {
+      return sendJson(res, 500, { error: '备份失败：' + e.message });
+    }
+  }
+  const latest = store.latestBackup();
+  if (!latest) return sendJson(res, 404, { error: '还没有备份，请先点「立即备份」' });
+  res.writeHead(200, {
+    'Content-Type': 'application/octet-stream',
+    'Content-Disposition': `attachment; filename="${latest.file}"`,
+  });
+  fs.createReadStream(latest.path).pipe(res);
+}
+
 /* ---------- /api/test ---------- */
 async function handleTest(req, res) {
   const cfg = resolveConfig(req);
@@ -860,6 +879,7 @@ const server = (() => {
     if (url === '/api/hotwords' && (req.method === 'GET' || req.method === 'POST')) return handleHotwords(req, res);
     if (url === '/api/samples' && (req.method === 'GET' || req.method === 'POST')) return handleSamples(req, res);
     if (url === '/api/access' && req.method === 'POST') return handleAccess(req, res);
+    if (url === '/api/backup' && (req.method === 'GET' || req.method === 'POST')) return handleBackup(req, res);
     if (url === '/api/test' && req.method === 'POST') return handleTest(req, res);
 
     return sendJson(res, 404, { error: '接口不存在' });

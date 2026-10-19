@@ -222,6 +222,16 @@
     </section>
 
     <section class="card">
+      <h2 class="card-title"><span class="dot"></span>数据备份 <em class="ct-opt">服务端</em></h2>
+      <p class="hint">全部数据（历史/投放数据/热词/样本）保存在服务端数据库。「立即备份」生成一份带时间戳的副本（保留最近 10 份），「下载备份」可保存到本地防丢。</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnBackup" type="button">立即备份</button>
+        <button class="btn btn-ghost" id="btnDownloadBackup" type="button">下载备份</button>
+      </div>
+      <p class="hint" id="backupResult"></p>
+    </section>
+
+    <section class="card">
       <h2 class="card-title"><span class="dot"></span>热词库 <em class="ct-opt">服务端</em></h2>
       <p class="hint">生成时注入全部场景。每行一个分组，格式：<code>组名: 词1 词2 词3</code></p>
       <label class="field">

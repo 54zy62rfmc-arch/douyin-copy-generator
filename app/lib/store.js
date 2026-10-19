@@ -94,6 +94,34 @@ function write(name, val) {
 /** 兼容旧 API：SQLite 写入即持久，无需防抖落盘 */
 function flushAll() {}
 
+/* ---------------- 数据备份 ---------------- */
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
+
+/** 先 checkpoint 再整库复制到 .data/backups，保留最近 10 份。返回备份文件路径 */
+function backupDb() {
+  const d = getDb();
+  d.exec('PRAGMA wal_checkpoint(FULL)');
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  const ts = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const name = `copygen-${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.db`;
+  const dest = path.join(BACKUP_DIR, name);
+  fs.copyFileSync(DB_PATH, dest);
+  // 保留最近 10 份
+  const files = fs.readdirSync(BACKUP_DIR).filter((f) => /^copygen-.*\.db$/.test(f)).sort().reverse();
+  for (const f of files.slice(10)) {
+    try { fs.unlinkSync(path.join(BACKUP_DIR, f)); } catch {}
+  }
+  return { file: name, path: dest };
+}
+
+/** 最近一份备份的路径，无备份返回 null */
+function latestBackup() {
+  if (!fs.existsSync(BACKUP_DIR)) return null;
+  const files = fs.readdirSync(BACKUP_DIR).filter((f) => /^copygen-.*\.db$/.test(f)).sort().reverse();
+  return files.length ? { file: files[0], path: path.join(BACKUP_DIR, files[0]) } : null;
+}
+
 /* ---------------- 历史记录 ---------------- */
 function rowToItem(row) {
   try {
@@ -360,6 +388,8 @@ module.exports = {
   setToken,
   verifyToken,
   flushAll,
+  backupDb,
+  latestBackup,
   DATA_DIR,
   DB_PATH,
 };

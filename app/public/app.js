@@ -1542,6 +1542,35 @@ async function checkToken() {
   }
 }
 
+async function doBackup() {
+  const el = $('#backupResult');
+  el.className = 'hint';
+  el.textContent = '备份中…';
+  try {
+    const res = await fetch('/api/backup', { method: 'POST', headers: llmHeaders(), body: '{}' });
+    const j = await res.json();
+    if (!res.ok || !j.ok) throw new Error(j.error || `HTTP ${res.status}`);
+    el.className = 'hint ok';
+    el.textContent = `备份成功：${j.file}（自动保留最近 10 份）`;
+  } catch (err) {
+    el.className = 'hint err';
+    el.textContent = '备份失败：' + err.message;
+  }
+}
+
+function downloadBackup() {
+  // 携带口令（如果启用）以通过鉴权
+  const token = load(LS.token, '');
+  const url = token ? `/api/backup?token=${encodeURIComponent(token)}` : '/api/backup';
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('开始下载备份');
+}
+
 /* ========== 配置 ========== */
 function loadCfgFields() {
   const cfg = load(LS.llm, {});
@@ -1821,6 +1850,8 @@ function init() {
 
   $('#btnSaveToken').addEventListener('click', saveToken);
   $('#btnCheckToken').addEventListener('click', checkToken);
+  $('#btnBackup').addEventListener('click', doBackup);
+  $('#btnDownloadBackup').addEventListener('click', downloadBackup);
   $('#btnSaveHotwords').addEventListener('click', () => saveHotwords(false));
   $('#btnResetHotwords').addEventListener('click', () => saveHotwords(true));
   $('#btnParseTrending').addEventListener('click', doParseTrending);
