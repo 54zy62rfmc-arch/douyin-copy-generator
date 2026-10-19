@@ -24,7 +24,8 @@ function isRetriable(err) {
   const code = err.statusCode;
   if (code) return code === 408 || code === 409 || code === 429 || code >= 500;
   const msg = String(err.message || '');
-  return /超时|timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|代理 CONNECT 失败|fetch failed/i.test(msg);
+  // AggregateError：Node 同时尝试 IPv4/IPv6 连接全部失败（跨国链路抖动常见），需要重试
+  return /超时|timeout|AggregateError|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|ENOTFOUND|EAI_AGAIN|socket hang up|代理 CONNECT 失败|fetch failed/i.test(msg);
 }
 
 function openRequest({ url, headers, body, proxyUrl, timeoutMs }) {
@@ -42,8 +43,11 @@ function openRequest({ url, headers, body, proxyUrl, timeoutMs }) {
     if (proxyUrl && isHttps) options.createConnection = proxyConnectionFactory(proxyUrl);
 
     const req = mod.request(options, resolve);
+    // 连接级快速超时：跨国链路抖动时 TCP 可能长时间挂起，20 秒无响应即失败并交由上层重试
+    const connectTimer = setTimeout(() => req.destroy(new Error(`大模型接口请求超时（连接 20s 无响应）`)), 20000);
     req.setTimeout(timeoutMs, () => req.destroy(new Error(`大模型接口请求超时（${timeoutMs}ms）`)));
     req.once('error', reject);
+    req.once('response', () => clearTimeout(connectTimer));
     if (body) req.write(body);
     req.end();
   });
