@@ -14,7 +14,6 @@ COPY app/public ./public
 
 # 历史 / 热词 / 样本 / 访问口令等数据目录
 RUN mkdir -p /app/.data
-VOLUME ["/app/.data"]
 
 EXPOSE 8000
 
